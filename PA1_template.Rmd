@@ -1,25 +1,113 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
+title: "Reproducible Research: Peer Assessment 1 by Michael Fearon"
 output: 
   html_document:
     keep_md: true
 ---
 
 
-## Loading and preprocessing the data
+### Loading and preprocessing the data
 
-
+```{r}
+setwd("C:/Users/Mike/ReproducibleResearch/RepData_PeerAssessment1")
+unzip("activity.zip")
+activity <- read.csv("activity.csv")
+str(activity)
+head(activity)
+```
 
 ## What is mean total number of steps taken per day?
+Calculate the total number of steps taken per day
+```{r}
+stepsperday<-aggregate(steps ~ date, data=activity, FUN=sum)
 
+```
 
+Make a histogram of the total number of steps taken each day
+```{r}
+hist(stepsperday$steps)
+```
 
+Calculate and report the mean and median of the total number of steps taken per day
+```{r}
+mean(stepsperday$steps,na.rm = TRUE)
+median(stepsperday$steps,na.rm = TRUE)
+```
 ## What is the average daily activity pattern?
+Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
 
+```{r}
+stepsper5minInterval <- aggregate(steps ~ interval, data = activity, mean, na.rm = TRUE)
+plot(steps ~ interval, data = stepsper5minInterval, type = "l")
+```
 
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+
+```{r}
+stepsper5minInterval[which.max(stepsper5minInterval$steps), ]$interval
+```
 
 ## Imputing missing values
 
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r}
+sum(is.na(activity$steps))
+```
+
+Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+I will replace the NA values with the mean value for that interval.
+
+Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+```{r}
+activitywithoutNAs<-activity
+activitywithoutNAs<-merge(activitywithoutNAs, stepsper5minInterval, by="interval", suffixes=c("",".y"))
+nas <- is.na(activitywithoutNAs$steps)
+activitywithoutNAs$steps[nas] <- activitywithoutNAs$steps.y[nas]
+head(activitywithoutNAs)
+sum(is.na(activitywithoutNAs$steps))
+```
+
+Make a histogram of the total number of steps taken each day
+
+```{r}
+stepsperdaynoNAs<-aggregate(steps ~ date, data=activitywithoutNAs, FUN=sum)
+hist(stepsperdaynoNAs$steps)
+```
+Calculate and report the mean and median total number of steps taken per day. 
+
+```{r}
+mean(stepsperdaynoNAs$steps)
+median(stepsperdaynoNAs$steps)
+```
+Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+The mean value does not change from its previously calculated value, but the median has changed to now be equal in value to the mean.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+```{r}
+dowfunction<-function(date){
+  day<-weekdays(date)
+  if(day %in% c("Saturday","Sunday"))
+    return("weekend")
+  else
+    return("weekday")}
+activitywithoutNAs$date<-as.Date(activitywithoutNAs$date)
+activitywithoutNAs$dayofweek<-sapply(activitywithoutNAs$date, FUN=dowfunction)
+head(activitywithoutNAs)
+table(activitywithoutNAs$dayofweek)
+```
+Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). 
+
+```{r}
+library(lattice)
+stepsbydayofweektype <- aggregate(steps ~ interval + dayofweek,
+                            data=activitywithoutNAs, FUN=mean)
+xyplot(steps ~ interval | dayofweek, data=stepsbydayofweektype, type="l", grid=T, layout=c(1,2))
+
+
+```
